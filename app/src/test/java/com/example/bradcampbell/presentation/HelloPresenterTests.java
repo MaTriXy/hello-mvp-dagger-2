@@ -1,77 +1,50 @@
 package com.example.bradcampbell.presentation;
 
-import com.example.bradcampbell.AppComponent;
-import com.example.bradcampbell.BuildConfig;
-import com.example.bradcampbell.DaggerAppComponent;
-import com.example.bradcampbell.MockAppModule;
-import com.example.bradcampbell.TestApp;
-import com.example.bradcampbell.domain.HelloEntity;
-import com.example.bradcampbell.domain.HelloModel;
-import com.example.bradcampbell.ui.DaggerHelloComponent;
-import com.example.bradcampbell.ui.HelloComponent;
-
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.robolectric.RobolectricGradleTestRunner;
-import org.robolectric.RuntimeEnvironment;
-import org.robolectric.annotation.Config;
-
-import rx.Observable;
-import rx.schedulers.TestScheduler;
-
 import static org.mockito.Matchers.anyString;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static rx.Observable.just;
 
-@RunWith(RobolectricGradleTestRunner.class)
-@Config(constants = BuildConfig.class,
-        application = TestApp.class)
+import com.example.bradcampbell.domain.HelloEntity;
+import com.example.bradcampbell.domain.HelloInteractor;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.robolectric.RobolectricTestRunner;
+import rx.Observable;
+import rx.schedulers.TestScheduler;
+
+@RunWith(RobolectricTestRunner.class)
 public class HelloPresenterTests {
-    private HelloPresenter presenter;
-    private HelloModel mockModel;
-    private HelloView mockView;
+  @Mock HelloInteractor interactor;
+  @Mock HelloView view;
 
-    @Before public void setup() {
-        TestApp app = (TestApp) RuntimeEnvironment.application;
+  private HelloPresenter helloPresenter;
 
-        mockModel = mock(HelloModel.class);
-        mockView = mock(HelloView.class);
+  @Before public void setup() {
+    MockitoAnnotations.initMocks(this);
 
-        MockAppModule mockAppModule = new MockAppModule(app);
-        mockAppModule.setOverrideHelloModel(mockModel);
+    helloPresenter = new HelloPresenter(interactor);
+  }
 
-        AppComponent appComponent = DaggerAppComponent.builder()
-                .appModule(mockAppModule)
-                .build();
+  @Test public void testLoadingIsCalledCorrectly() {
+    TestScheduler testScheduler = new TestScheduler();
+    Observable<HelloEntity> result = just(HelloEntity.create(0, 0)).subscribeOn(testScheduler);
+    when(interactor.value()).thenReturn(result);
 
-        HelloComponent helloComponent = DaggerHelloComponent.builder()
-                .appComponent(appComponent)
-                .build();
+    helloPresenter.setView(view);
 
-        presenter = helloComponent.getPresenter();
-        presenter.bindView(mockView);
-    }
+    verify(view, times(1)).showLoading();
+    verify(view, never()).hideLoading();
+    verify(view, never()).display(anyString());
 
-    @Test public void testLoadingIsCalledCorrectly() {
-        TestScheduler testScheduler = new TestScheduler();
-        Observable<HelloEntity> result = just(HelloEntity.create(0, 0))
-                .subscribeOn(testScheduler);
-        when(mockModel.getValue()).thenReturn(result);
+    testScheduler.triggerActions();
 
-        presenter.load();
-
-        verify(mockView, times(1)).showLoading();
-        verify(mockView, never()).hideLoading();
-        verify(mockView, never()).display(anyString());
-
-        testScheduler.triggerActions();
-
-        verify(mockView, times(1)).display("0");
-        verify(mockView, times(1)).hideLoading();
-    }
+    verify(view, times(1)).display("0");
+    verify(view, times(1)).hideLoading();
+  }
 }

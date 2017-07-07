@@ -1,28 +1,24 @@
 package com.example.bradcampbell;
 
+import android.app.Application;
 import android.content.Context;
+import android.support.annotation.VisibleForTesting;
 
-import nz.bradcampbell.compartment.ComponentCacheApplication;
+public class App extends Application {
+  private AppComponent component;
 
-public class App extends ComponentCacheApplication {
-    private AppComponent component;
+  @VisibleForTesting
+  protected AppComponent createComponent() {
+    return DaggerAppComponent.builder()
+        .appModule(new AppModule(this))
+        .build();
+  }
 
-    protected AppModule getApplicationModule() {
-        return new AppModule(this);
+  public static AppComponent getAppComponent(Context context) {
+    App app = (App) context.getApplicationContext();
+    if (app.component == null) {
+      app.component = app.createComponent();
     }
-
-    public static AppComponent getAppComponent(Context context) {
-        App app = (App)context.getApplicationContext();
-        if (app.component == null) {
-            app.component = DaggerAppComponent.builder()
-                    .appModule(app.getApplicationModule())
-                    .build();
-        }
-        return app.component;
-    }
-
-    public static void clearAppComponent(Context context) {
-        App app = (App)context.getApplicationContext();
-        app.component = null;
-    }
+    return app.component;
+  }
 }
